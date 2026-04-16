@@ -16,6 +16,7 @@ const clonePart = (part) => {
   return JSON.parse(JSON.stringify(part));
 };
 const rocket = [clonePart(partsCatalog.probe), clonePart(partsCatalog.tank), clonePart(partsCatalog.engine)];
+const rocket = [structuredClone(partsCatalog.probe), structuredClone(partsCatalog.tank), structuredClone(partsCatalog.engine)];
 
 let scriptCommands = [];
 let activeTab = "vab";
@@ -104,6 +105,11 @@ function drawVab() {
     vabCtx.fillStyle = "#061026";
     vabCtx.font = "12px sans-serif";
     vabCtx.fillText(p.name, x + 6, y + 24);
+    vabCtx.fillStyle = p.type === "tank" ? "#6ab8ff" : p.type === "engine" ? "#ff8c59" : "#b4ff9b";
+    vabCtx.fillRect(vabCanvas.width / 2 - 34, y, 68, segmentH - 4);
+    vabCtx.fillStyle = "#061026";
+    vabCtx.font = "12px sans-serif";
+    vabCtx.fillText(p.name, vabCanvas.width / 2 - 28, y + 24);
   }
 }
 
@@ -163,6 +169,7 @@ function stage() {
 function startFlight() {
   validateScript();
   const planet = planets[planetSelect.value];
+  const m = massSummary();
   flight = {
     planet,
     t: 0,
@@ -274,6 +281,14 @@ function drawFlight() {
   fctx.fillStyle = planet.color;
   fctx.beginPath();
   fctx.arc(toScreenX(0), toScreenY(0), pr, 0, Math.PI * 2);
+  const scale = 0.00003;
+  const centerX = flightCanvas.width * 0.25;
+  const centerY = flightCanvas.height * 0.5;
+
+  const pr = planet.radius * scale;
+  fctx.fillStyle = planet.color;
+  fctx.beginPath();
+  fctx.arc(centerX, centerY, pr, 0, Math.PI * 2);
   fctx.fill();
 
   fctx.strokeStyle = "#88ddff";
@@ -281,6 +296,8 @@ function drawFlight() {
   flight.trajectory.forEach((p, i) => {
     const px = toScreenX(p.x);
     const py = toScreenY(p.y);
+    const px = centerX + p.x * scale;
+    const py = centerY - p.y * scale;
     if (i === 0) fctx.moveTo(px, py);
     else fctx.lineTo(px, py);
   });
@@ -288,6 +305,8 @@ function drawFlight() {
 
   const rx = toScreenX(flight.x);
   const ry = toScreenY(flight.y);
+  const rx = centerX + flight.x * scale;
+  const ry = centerY - flight.y * scale;
   fctx.fillStyle = "#ffffff";
   fctx.beginPath();
   fctx.arc(rx, ry, 4, 0, Math.PI * 2);
@@ -303,6 +322,11 @@ function tick() {
   const realDt = Math.min(0.05, (now - lastFrameTime) / 1000);
   lastFrameTime = now;
   if (!paused) stepPhysics(realDt * timeScale);
+  flightStats.innerHTML = `Time: <b>${flight.t.toFixed(1)} s</b> | Altitude: <b>${Math.max(0, altitude).toFixed(0)} m</b> | Speed: <b>${speed.toFixed(1)} m/s</b> | Fuel: <b>${totalFuel().toFixed(2)} t</b> | Throttle: <b>${(flight.throttle * 100).toFixed(0)}%</b> | Pitch: <b>${flight.pitch.toFixed(0)}°</b>`;
+}
+
+function tick() {
+  stepPhysics(1 / 60);
   drawFlight();
   drawVab();
   renderRocketStats();
@@ -326,6 +350,12 @@ function setupControls() {
   document.getElementById("removePart").addEventListener("click", () => { if (rocket.length > 1) rocket.pop(); });
   document.getElementById("clearRocket").addEventListener("click", () => {
     rocket.splice(0, rocket.length, clonePart(partsCatalog.probe), clonePart(partsCatalog.tank), clonePart(partsCatalog.engine));
+  document.getElementById("addTank").addEventListener("click", () => rocket.push(structuredClone(partsCatalog.tank)));
+  document.getElementById("addEngine").addEventListener("click", () => rocket.push(structuredClone(partsCatalog.engine)));
+  document.getElementById("addProbe").addEventListener("click", () => rocket.unshift(structuredClone(partsCatalog.probe)));
+  document.getElementById("removePart").addEventListener("click", () => { if (rocket.length > 1) rocket.pop(); });
+  document.getElementById("clearRocket").addEventListener("click", () => {
+    rocket.splice(0, rocket.length, structuredClone(partsCatalog.probe), structuredClone(partsCatalog.tank), structuredClone(partsCatalog.engine));
   });
   document.getElementById("validateScript").addEventListener("click", validateScript);
   document.getElementById("launchBtn").addEventListener("click", startFlight);
@@ -394,3 +424,7 @@ if (document.readyState === "loading") {
 } else {
   initializeGame();
 }
+setupTabs();
+setupControls();
+validateScript();
+tick();
