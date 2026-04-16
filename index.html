@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rocket Coder</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Rocket Coder</h1>
+    <p>Build your rocket in the VAB, script its behavior, and launch across a realistic gravity system.</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="vab">VAB</button>
+    <button class="tab" data-tab="programming">Programming</button>
+    <button class="tab" data-tab="launch">Launch</button>
+  </nav>
+
+  <main>
+    <section id="vab" class="panel active">
+      <h2>Vehicle Assembly Building</h2>
+      <p>Create a stack like a lightweight SFS-style builder. Add parts from bottom to top.</p>
+      <div class="controls">
+        <button id="addTank">Add Fuel Tank</button>
+        <button id="addEngine">Add Engine</button>
+        <button id="addProbe">Add Probe Core</button>
+        <button id="removePart">Remove Top Part</button>
+        <button id="clearRocket">Clear</button>
+      </div>
+      <div id="rocketStats" class="stats"></div>
+      <canvas id="vabCanvas" width="420" height="420" aria-label="Rocket builder preview"></canvas>
+    </section>
+
+    <section id="programming" class="panel">
+      <h2>Programming</h2>
+      <p>Write one command per line. Commands:</p>
+      <ul>
+        <li><code>throttle [0-1]</code></li>
+        <li><code>wait [seconds]</code></li>
+        <li><code>stage</code></li>
+        <li><code>pitch [degrees]</code> (90 = straight up)</li>
+      </ul>
+      <textarea id="scriptInput" spellcheck="false">throttle 1
+wait 12
+pitch 75
+wait 8
+pitch 45
+wait 6
+stage
+throttle 0.4</textarea>
+      <div class="controls">
+        <button id="validateScript">Validate Script</button>
+      </div>
+      <pre id="scriptStatus"></pre>
+    </section>
+
+    <section id="launch" class="panel">
+      <h2>Launch & Solar System</h2>
+      <div class="controls">
+        <label for="planetSelect">Launch planet:</label>
+        <select id="planetSelect"></select>
+        <button id="launchBtn">Launch</button>
+        <button id="resetFlight">Reset Flight</button>
+        <button id="toggleFollow">Follow Rocket: On</button>
+        <button id="pauseFlight">Pause</button>
+      </div>
+      <p>Tracker controls: drag to pan, mouse wheel to zoom, double-click to re-center.</p>
+      <div class="stats" id="flightStats"></div>
+      <canvas id="flightCanvas" width="900" height="450" aria-label="Rocket launch simulation"></canvas>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
