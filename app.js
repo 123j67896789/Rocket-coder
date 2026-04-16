@@ -131,6 +131,10 @@ function startFlight() {
     running: true,
     trajectory: []
   };
+  paused = false;
+  camera.x = 0;
+  camera.y = planet.radius;
+  camera.zoom = 0.00003;
 
   if (!scriptCommands.length) {
     scriptStatus.textContent = "No valid script. Fix script before launching.";
@@ -213,6 +217,17 @@ function drawFlight() {
   if (!flight) return;
 
   const planet = flight.planet;
+  if (followRocket) {
+    camera.x = flight.x;
+    camera.y = flight.y;
+  }
+  const toScreenX = (worldX) => (flightCanvas.width / 2) + (worldX - camera.x) * camera.zoom;
+  const toScreenY = (worldY) => (flightCanvas.height / 2) - (worldY - camera.y) * camera.zoom;
+
+  const pr = planet.radius * camera.zoom;
+  fctx.fillStyle = planet.color;
+  fctx.beginPath();
+  fctx.arc(toScreenX(0), toScreenY(0), pr, 0, Math.PI * 2);
   const scale = 0.00003;
   const centerX = flightCanvas.width * 0.25;
   const centerY = flightCanvas.height * 0.5;
@@ -226,6 +241,8 @@ function drawFlight() {
   fctx.strokeStyle = "#88ddff";
   fctx.beginPath();
   flight.trajectory.forEach((p, i) => {
+    const px = toScreenX(p.x);
+    const py = toScreenY(p.y);
     const px = centerX + p.x * scale;
     const py = centerY - p.y * scale;
     if (i === 0) fctx.moveTo(px, py);
@@ -233,6 +250,8 @@ function drawFlight() {
   });
   fctx.stroke();
 
+  const rx = toScreenX(flight.x);
+  const ry = toScreenY(flight.y);
   const rx = centerX + flight.x * scale;
   const ry = centerY - flight.y * scale;
   fctx.fillStyle = "#ffffff";
@@ -242,6 +261,14 @@ function drawFlight() {
 
   const altitude = Math.hypot(flight.x, flight.y) - planet.radius;
   const speed = Math.hypot(flight.vx, flight.vy);
+  flightStats.innerHTML = `Time: <b>${flight.t.toFixed(1)} s</b> | Altitude: <b>${Math.max(0, altitude).toFixed(0)} m</b> | Speed: <b>${speed.toFixed(1)} m/s</b> | Fuel: <b>${totalFuel().toFixed(2)} t</b> | Throttle: <b>${(flight.throttle * 100).toFixed(0)}%</b> | Pitch: <b>${flight.pitch.toFixed(0)}°</b> | Zoom: <b>${camera.zoom.toExponential(2)}</b> | ${paused ? "<b>Paused</b>" : "<b>Running</b>"}`;
+}
+
+function tick() {
+  const now = performance.now();
+  const realDt = Math.min(0.05, (now - lastFrameTime) / 1000);
+  lastFrameTime = now;
+  if (!paused) stepPhysics(realDt * timeScale);
   flightStats.innerHTML = `Time: <b>${flight.t.toFixed(1)} s</b> | Altitude: <b>${Math.max(0, altitude).toFixed(0)} m</b> | Speed: <b>${speed.toFixed(1)} m/s</b> | Fuel: <b>${totalFuel().toFixed(2)} t</b> | Throttle: <b>${(flight.throttle * 100).toFixed(0)}%</b> | Pitch: <b>${flight.pitch.toFixed(0)}°</b>`;
 }
 
@@ -276,6 +303,15 @@ function setupControls() {
   document.getElementById("resetFlight").addEventListener("click", () => {
     flight = null;
     flightStats.textContent = "Flight reset.";
+    paused = false;
+  });
+  document.getElementById("toggleFollow").addEventListener("click", (e) => {
+    followRocket = !followRocket;
+    e.target.textContent = `Follow Rocket: ${followRocket ? "On" : "Off"}`;
+  });
+  document.getElementById("pauseFlight").addEventListener("click", (e) => {
+    paused = !paused;
+    e.target.textContent = paused ? "Resume" : "Pause";
   });
 
   Object.keys(planets).forEach((name) => {
@@ -285,6 +321,36 @@ function setupControls() {
     planetSelect.appendChild(option);
   });
   planetSelect.value = "Earth";
+
+  flightCanvas.addEventListener("mousedown", (ev) => {
+    camera.dragging = true;
+    camera.dragStartX = ev.clientX;
+    camera.dragStartY = ev.clientY;
+    camera.startCamX = camera.x;
+    camera.startCamY = camera.y;
+    followRocket = false;
+    document.getElementById("toggleFollow").textContent = "Follow Rocket: Off";
+  });
+  window.addEventListener("mouseup", () => {
+    camera.dragging = false;
+  });
+  window.addEventListener("mousemove", (ev) => {
+    if (!camera.dragging) return;
+    const dx = ev.clientX - camera.dragStartX;
+    const dy = ev.clientY - camera.dragStartY;
+    camera.x = camera.startCamX - (dx / camera.zoom);
+    camera.y = camera.startCamY + (dy / camera.zoom);
+  });
+  flightCanvas.addEventListener("wheel", (ev) => {
+    ev.preventDefault();
+    const multiplier = ev.deltaY > 0 ? 0.9 : 1.1;
+    camera.zoom = Math.min(0.0009, Math.max(0.0000012, camera.zoom * multiplier));
+  }, { passive: false });
+  flightCanvas.addEventListener("dblclick", () => {
+    if (!flight) return;
+    camera.x = flight.x;
+    camera.y = flight.y;
+  });
 }
 
 setupTabs();
