@@ -11,11 +11,21 @@ const planets = {
 };
 
 const G = 6.67430e-11;
+const clonePart = (part) => {
+  if (typeof structuredClone === "function") return structuredClone(part);
+  return JSON.parse(JSON.stringify(part));
+};
+const rocket = [clonePart(partsCatalog.probe), clonePart(partsCatalog.tank), clonePart(partsCatalog.engine)];
 const rocket = [structuredClone(partsCatalog.probe), structuredClone(partsCatalog.tank), structuredClone(partsCatalog.engine)];
 
 let scriptCommands = [];
 let activeTab = "vab";
 let flight = null;
+let followRocket = true;
+let paused = false;
+let timeScale = 1;
+let lastFrameTime = performance.now();
+const camera = { x: 0, y: 0, zoom: 0.00003, dragging: false, dragStartX: 0, dragStartY: 0, startCamX: 0, startCamY: 0 };
 
 const tabButtons = document.querySelectorAll(".tab");
 const panels = document.querySelectorAll(".panel");
@@ -52,6 +62,49 @@ function drawVab() {
   for (let i = rocket.length - 1; i >= 0; i -= 1) {
     const p = rocket[i];
     y -= segmentH;
+    const x = vabCanvas.width / 2 - 34;
+    const h = segmentH - 4;
+    const w = 68;
+
+    if (p.type === "probe") {
+      vabCtx.fillStyle = "#95f7b8";
+      vabCtx.beginPath();
+      vabCtx.moveTo(x + w / 2, y - 6);
+      vabCtx.lineTo(x + w, y + h);
+      vabCtx.lineTo(x, y + h);
+      vabCtx.closePath();
+      vabCtx.fill();
+      vabCtx.fillStyle = "#153027";
+      vabCtx.fillRect(x + 28, y + 12, 12, 12);
+    } else if (p.type === "tank") {
+      vabCtx.fillStyle = "#6ab8ff";
+      vabCtx.fillRect(x, y, w, h);
+      vabCtx.fillStyle = "#9fd2ff";
+      for (let stripe = 0; stripe < 4; stripe += 1) {
+        vabCtx.fillRect(x + 8, y + 5 + stripe * 9, w - 16, 2);
+      }
+      vabCtx.fillStyle = "#2d638f";
+      vabCtx.fillRect(x, y, 6, h);
+      vabCtx.fillRect(x + w - 6, y, 6, h);
+    } else if (p.type === "engine") {
+      vabCtx.fillStyle = "#ff9a63";
+      vabCtx.fillRect(x + 8, y, w - 16, h - 10);
+      vabCtx.fillStyle = "#5d657a";
+      vabCtx.beginPath();
+      vabCtx.moveTo(x + 16, y + h - 10);
+      vabCtx.lineTo(x + w - 16, y + h - 10);
+      vabCtx.lineTo(x + w - 24, y + h);
+      vabCtx.lineTo(x + 24, y + h);
+      vabCtx.closePath();
+      vabCtx.fill();
+      vabCtx.fillStyle = "#ffce8a";
+      vabCtx.fillRect(x + w / 2 - 8, y + h - 8, 16, 8);
+    }
+    vabCtx.strokeStyle = "#020919";
+    vabCtx.strokeRect(x, y, w, h);
+    vabCtx.fillStyle = "#061026";
+    vabCtx.font = "12px sans-serif";
+    vabCtx.fillText(p.name, x + 6, y + 24);
     vabCtx.fillStyle = p.type === "tank" ? "#6ab8ff" : p.type === "engine" ? "#ff8c59" : "#b4ff9b";
     vabCtx.fillRect(vabCanvas.width / 2 - 34, y, 68, segmentH - 4);
     vabCtx.fillStyle = "#061026";
@@ -291,6 +344,12 @@ function setupTabs() {
 }
 
 function setupControls() {
+  document.getElementById("addTank").addEventListener("click", () => rocket.push(clonePart(partsCatalog.tank)));
+  document.getElementById("addEngine").addEventListener("click", () => rocket.push(clonePart(partsCatalog.engine)));
+  document.getElementById("addProbe").addEventListener("click", () => rocket.unshift(clonePart(partsCatalog.probe)));
+  document.getElementById("removePart").addEventListener("click", () => { if (rocket.length > 1) rocket.pop(); });
+  document.getElementById("clearRocket").addEventListener("click", () => {
+    rocket.splice(0, rocket.length, clonePart(partsCatalog.probe), clonePart(partsCatalog.tank), clonePart(partsCatalog.engine));
   document.getElementById("addTank").addEventListener("click", () => rocket.push(structuredClone(partsCatalog.tank)));
   document.getElementById("addEngine").addEventListener("click", () => rocket.push(structuredClone(partsCatalog.engine)));
   document.getElementById("addProbe").addEventListener("click", () => rocket.unshift(structuredClone(partsCatalog.probe)));
@@ -353,6 +412,18 @@ function setupControls() {
   });
 }
 
+function initializeGame() {
+  setupTabs();
+  setupControls();
+  validateScript();
+  tick();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initializeGame);
+} else {
+  initializeGame();
+}
 setupTabs();
 setupControls();
 validateScript();
